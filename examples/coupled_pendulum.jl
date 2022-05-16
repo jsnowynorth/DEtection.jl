@@ -1,6 +1,6 @@
 
 
-
+using DEtection
 using Plots, Missings, Distributions, Random, LinearAlgebra, Statistics
 
 
@@ -48,111 +48,141 @@ for i in 2:nsamps
   Y[:, i] = rk(pendulum, Y[:, i-1], pars, h)
 end
 
-R = 0.01 * Matrix{Float64}(I, 4, 4)
-Z = copy(Y) + rand(MvNormal([0.0; 0.0; 0.0; 0.0], R), nsamps)
-
-
 
 Y_prime = reduce(hcat, [pendulum(Y[:, i], pars)[1:2] for i in 1:nsamps])
-Z_prime = reduce(hcat, [pendulum(Z[:, i], pars)[1:2] for i in 1:nsamps])
 Y = Y[3:4, :]
-Z = Z[3:4, :]
 
-plot(Y[1, :])
-plot!(Z[1, :])
+plot(Y')
 
-plot(Y[2, :])
-plot!(Z[2, :])
-
-plot(Y_prime[1, :])
-plot!(Z_prime[1, :])
-
-plot(Y_prime[2, :])
-plot!(Z_prime[2, :])
+plot(Y_prime')
 
 
 
-function Lambda(x::Vector)
-  X = x[1]
-  Y = x[2]
-  return ([X, Y, X * Y, X^2, Y^2, sin(X), sin(Y), cos(X), cos(Y)])
+
+# function Lambda(x::Vector)
+#   X = x[1]
+#   Y = x[2]
+#   return ([X, Y, X * Y, X^2, Y^2, sin(X), sin(Y), cos(X), cos(Y)])
+# end
+
+
+ΛNames = ["Phi"]
+function Λ(A, Φ)
+    
+  ϕ = Φ[1]
+  u = A * ϕ'
+
+  θ₁ = u[1,:]
+  θ₂ = u[2,:]
+  
+  return [θ₁, θ₂, θ₁ .* θ₂, θ₁.^2, θ₂.^2, sin.(θ₁), sin.(θ₂), cos.(θ₁), cos.(θ₂)]
+
 end
 
-function Lambda(x::Vector)
-  X = x[1]
-  Y = x[2]
-  return ([X, Y, X * Y, X^2, Y^2, sin(X), sin(Y), cos(X), cos(Y), X^2*Y, Y^2*X, X^3, Y^3])
-end
+
+nbasis = 200
+TimeStep = Vector(range(0.01, size(Y,2)*0.01, step = 0.01))
+batch_size = 50
+buffer = 10
+v0 = 1e-6
+v1 = 1e4
+learning_rate = 1e-8
 
 
-samps = DEtection_sampler(Y, 1e-8, 1e-8,
-  nits = 5000,
-  burnin = 1000,
-  nbasis = 200,
-  h = 0.01,
-  batch_size = 50,
-  buffer = 10,
-  v0 = 1e-6,
-  v1 = 1e4,
-  order = 2,
-  latent_space = 2,
-  Lambda)
-# 
-
-par_names = ["X"; "Y"; "X*Y"; "X^2"; "Y^2"; "sin(X)"; "sin(Y)"; "cos(X)"; "cos(Y)"]
-par_names = ["X"; "Y"; "X*Y"; "X^2"; "Y^2"; "sin(X)"; "sin(Y)"; "cos(X)"; "cos(Y)"; "Xsin(X)"; "Ysin(Y)"; "Xcos(X)"; "Ycos(Y)"]
-sys_names = ["dX/dt"; "dY/dt"]
-eqs = print_equation(M = samps['M'],
-  M_prob = samps["gamma"],
-  par_names = par_names,
-  sys_names = sys_names,
-  cutoff_prob = 0.99)
-eqs["mean"]
-eqs["lower"]
-eqs["upper"]
+model, pars, posterior = DEtection_sampler(Y, TimeStep, nbasis, buffer, batch_size, learning_rate, v0, v1, Λ, ΛNames, nits = 1000, orderTime = 2)
 
 
-round.(mean(samps['M'], dims = 3)[:, :, 1], digits = 3)
-round.(mean(samps["gamma"], dims = 3), digits = 3)
+print_equation(["θ₁ₜ", "θ₂ₜ"], model, pars, posterior, cutoff_prob=0.95, p=0.95)
 
 
-A_hat = mean(samps['A'], dims = 3)[:, :, 1]
-
-X_rec = (samps["Phi"] * A_hat)'
-X_prime_rec = (samps["Phi_prime"] * A_hat)'
-
-plot([h:h:h*nsamps;], X_rec[:1, :], linecolor = "blue")
-plot!([h:h:h*nsamps;], Y[:1, :], linecolor = "black")
-
-plot([h:h:h*nsamps;], X_rec[:2, :], linecolor = "blue")
-plot!([h:h:h*nsamps;], Y[:2, :], linecolor = "black")
+post = posterior_summary(model, pars, posterior)
+post.M
+post.M_hpd
+post.gamma
+sqrt.(post.ΣV)
+post.ΣU
+post.π
 
 
-plot([30:1:980;], X_prime_rec[:1, 30:980], linecolor = "blue")
-plot!([30:1:980;], Y_prime[:1, 30:980], linecolor = "black")
+post_mean, post_sd = posterior_surface(model, pars, posterior)
 
-plot([h:h:h*nsamps;], X_prime_rec[:1, :], linecolor = "blue")
-plot!([h:h:h*nsamps;], Y_prime[:1, :], linecolor = "black")
-
-plot([h:h:h*nsamps;], X_prime_rec[:2, :], linecolor = "blue")
-plot!([h:h:h*nsamps;], Y_prime[:2, :], linecolor = "black")
+plot(post_mean[1,:])
+plot!(Y[1,:])
 
 
-plot(samps['M'][:1, :1, :], linecolor = "black")
-plot(samps['M'][:1, :2, :], linecolor = "black")
-plot(samps['M'][:1, :6, :], linecolor = "black")
-plot(samps['M'][:2, :1, :], linecolor = "black")
-plot(samps['M'][:2, :2, :], linecolor = "black")
-plot(samps['M'][:2, :7, :], linecolor = "black")
-
-# plot(samps['A'][:100, :1, :], linecolor = "black")
-
-histogram(samps['M'][:1, :1, :])
-histogram(samps['M'][:1, :11, :])
-histogram(samps['M'][:2, :2, :])
-histogram(samps['M'][:2, :12, :])
+plot(post_mean[2,:])
+plot!(Y[2,:])
 
 
-round.(mean(samps['R'], dims = 3), digits = 3)
-round.(mean(samps['Q'], dims = 3), digits = 3)
+
+
+# samps = DEtection_sampler(Y, 1e-8, 1e-8,
+#   nits = 5000,
+#   burnin = 1000,
+#   nbasis = 200,
+#   h = 0.01,
+#   batch_size = 50,
+#   buffer = 10,
+#   v0 = 1e-6,
+#   v1 = 1e4,
+#   order = 2,
+#   latent_space = 2,
+#   Lambda)
+# # 
+
+# par_names = ["X"; "Y"; "X*Y"; "X^2"; "Y^2"; "sin(X)"; "sin(Y)"; "cos(X)"; "cos(Y)"]
+# sys_names = ["dX/dt"; "dY/dt"]
+# eqs = print_equation(M = samps['M'],
+#   M_prob = samps["gamma"],
+#   par_names = par_names,
+#   sys_names = sys_names,
+#   cutoff_prob = 0.99)
+# eqs["mean"]
+# eqs["lower"]
+# eqs["upper"]
+
+
+# round.(mean(samps['M'], dims = 3)[:, :, 1], digits = 3)
+# round.(mean(samps["gamma"], dims = 3), digits = 3)
+
+
+# A_hat = mean(samps['A'], dims = 3)[:, :, 1]
+
+# X_rec = (samps["Phi"] * A_hat)'
+# X_prime_rec = (samps["Phi_prime"] * A_hat)'
+
+# plot([h:h:h*nsamps;], X_rec[:1, :], linecolor = "blue")
+# plot!([h:h:h*nsamps;], Y[:1, :], linecolor = "black")
+
+# plot([h:h:h*nsamps;], X_rec[:2, :], linecolor = "blue")
+# plot!([h:h:h*nsamps;], Y[:2, :], linecolor = "black")
+
+
+# plot([30:1:980;], X_prime_rec[:1, 30:980], linecolor = "blue")
+# plot!([30:1:980;], Y_prime[:1, 30:980], linecolor = "black")
+
+# plot([h:h:h*nsamps;], X_prime_rec[:1, :], linecolor = "blue")
+# plot!([h:h:h*nsamps;], Y_prime[:1, :], linecolor = "black")
+
+# plot([h:h:h*nsamps;], X_prime_rec[:2, :], linecolor = "blue")
+# plot!([h:h:h*nsamps;], Y_prime[:2, :], linecolor = "black")
+
+
+# plot(samps['M'][:1, :1, :], linecolor = "black")
+# plot(samps['M'][:1, :2, :], linecolor = "black")
+# plot(samps['M'][:1, :6, :], linecolor = "black")
+# plot(samps['M'][:2, :1, :], linecolor = "black")
+# plot(samps['M'][:2, :2, :], linecolor = "black")
+# plot(samps['M'][:2, :7, :], linecolor = "black")
+
+# # plot(samps['A'][:100, :1, :], linecolor = "black")
+
+# histogram(samps['M'][:1, :1, :])
+# histogram(samps['M'][:1, :11, :])
+# histogram(samps['M'][:2, :2, :])
+# histogram(samps['M'][:2, :12, :])
+
+
+# round.(mean(samps['R'], dims = 3), digits = 3)
+# round.(mean(samps['Q'], dims = 3), digits = 3)
 

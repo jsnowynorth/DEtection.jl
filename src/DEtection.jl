@@ -12,17 +12,28 @@ using JLD2
 using RCall
 using TexTables, KernelDensity
 using DataFrames, DataFramesMeta, Chain
+using CodeTracking, Revise
 # @rlibrary ggplot2
 
 
-# include("helper_funs.jl")
-include("hpd.jl")
-include("print_equation.jl")
-include("sgmcmc_sampler.jl")
-include("test_funs.jl")
+
+include("helper_funs.jl")
+include("DE_sampler.jl")
+include("process_sampler.jl")
+
+# include("hpd.jl")
+# include("print_equation.jl")
+# include("sgmcmc_sampler.jl")
+# include("test_funs.jl")
+
+# export DEtection_sampler
+# export print_equation
+# export hpd
 
 export DEtection_sampler
 export print_equation
+export posterior_surface
+export posterior_summary
 
 
 end # module
