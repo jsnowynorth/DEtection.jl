@@ -156,34 +156,3 @@ plot(posterior.ΣV[1,1,:])
 
 
 plot(posterior.A[1,20,:])
-
-
-
-
-
-learning_rate = 1e1
-
-
-pars, model = create_pars(Z, TimeStep, nbasis, buffer, batch_size, learning_rate, v0, v1, Λ, ΛNames)
-
-
-pars = update_M!(pars, model)
-pars = update_gamma!(pars, model)
-pars = update_ΣV!(pars, model)
-pars = update_ΣU!(pars, model)
-pars = update_A!(pars, model)
-
-# pars.a_V
-pars.ΣV
-pars.M .* pars.gamma
-pars.ΣU
-# pars.a_U
-
-plot(pars.State.State["U"][1,:])
-plot!(Y[1,:])
-
-plot(pars.State.State["U"][2,:])
-plot!(Y[2,:])
-
-plot(pars.State.State["U"][3,:])
-plot!(Y[3,:])

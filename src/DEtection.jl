@@ -14,7 +14,6 @@ using TexTables, KernelDensity
 using DataFrames, DataFramesMeta, Chain
 using CodeTracking, Revise
 # using Zygote
-# @rlibrary ggplot2
 
 
 
@@ -22,14 +21,6 @@ include("helper_funs.jl")
 include("DE_sampler.jl")
 include("process_sampler.jl")
 
-# include("hpd.jl")
-# include("print_equation.jl")
-# include("sgmcmc_sampler.jl")
-# include("test_funs.jl")
-
-# export DEtection_sampler
-# export print_equation
-# export hpd
 
 export DEtection_sampler
 export print_equation

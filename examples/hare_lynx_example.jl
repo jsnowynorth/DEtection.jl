@@ -69,8 +69,3 @@ plot!(Y[1,:])
 plot(post_mean[2,:])
 plot!(Y[2,:])
 
-
-plot(posterior.M[1,1,:])
-
-plot(posterior.A[2,20,:])
-
