@@ -13,6 +13,7 @@ using RCall
 using TexTables, KernelDensity
 using DataFrames, DataFramesMeta, Chain
 using CodeTracking, Revise
+# using Zygote
 # @rlibrary ggplot2
 
 
@@ -34,6 +35,7 @@ export DEtection_sampler
 export print_equation
 export posterior_surface
 export posterior_summary
+export hpd
 
 
 end # module

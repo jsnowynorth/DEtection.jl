@@ -212,9 +212,12 @@ function create_pars(Y::Array{Float64,2},
   # parameters
   samp_inds = sample(inner_inds, batch_size, replace = false)
   F = create_Λ(Λ, A, Basis, ΛNames, X)
+  D = size(F, 2)
+  # dF = create_∇Λ(Λ, A, Basis, samp_inds, ΛNames, D, nbasis, N, X)
   dF = create_∇Λ(Λ, A, Basis, samp_inds, ΛNames, X)
 
-  D = size(F, 2)
+
+  # D = size(F, 2)
   M = zeros(N, D)
   ΣV = Diagonal(ones(N))
   ΣU = Diagonal(ones(N))
@@ -371,7 +374,7 @@ function update_M!(pars, model)
 
   V = (pars.F[model.inner_inds, :]' ⊗ I(model.N)) * (Diagonal(ones(length(model.inner_inds))) ⊗ inv(pars.ΣU)) * transpose(pars.F[model.inner_inds, :]' ⊗ I(model.N)) + inv(pars.ΣM)
   a = (pars.F[model.inner_inds, :]' ⊗ I(model.N)) * (Diagonal(ones(length(model.inner_inds))) ⊗ inv(pars.ΣU)) * vec(pars.State.State[model.response][:,model.inner_inds])
-
+ 
   C = cholesky(Hermitian(V))
   b = rand(Normal(0.0, 1.0), model.N * model.D)
 
@@ -417,13 +420,13 @@ function update_ΣV!(pars, model)
   sse_tmp = reduce(hcat, sse_tmp)
   for n in 1:model.N
     a_hat = (length(model.inner_inds) + pars.nu_V) / 2
-    b_hat = (0.5*(sse_tmp[n, :]'*sse_tmp[n, :])+pars.nu_V[1]/pars.a_V[n])[1]
+    b_hat = (0.5*(sse_tmp[n, :]'*sse_tmp[n, :]) + pars.nu_V[1]/pars.a_V[n])[1]
     pars.ΣV[n,n] = rand(InverseGamma(a_hat, b_hat))
   end
 
   for n in 1:model.N
     a_hat = (pars.nu_V + 1) / 2
-    b_hat = (pars.nu_V / pars.ΣV[n]) + (1 / pars.A_V[n]^2)
+    b_hat = (pars.nu_V / pars.ΣV[n,n]) + (1 / pars.A_V[n]^2)
     pars.a_V[n] = rand(InverseGamma(a_hat, b_hat))
   end
 
@@ -469,11 +472,11 @@ function ΔL(v, H, ϕ, ϕ_t, ΣVinv, ΣUinv, A, M, fcurr, fprime)
         ΣUinv  * A * ϕ_t * ϕ_t' -
         ΣUinv * M * fcurr * ϕ_t' -
         reduce(vcat, [ϕ_t' * A'  * ΣUinv * M * fprime[i] - (fcurr' * M' * ΣUinv * M) * fprime[i] for i in 1:size(fprime,1)])
+        # reduce(vcat, [ϕ_t' * A'  * ΣUinv * M * fprime[:,:,i] - (fcurr' * M' * ΣUinv * M) * fprime[:,:,i] for i in 1:size(fprime,3)])
 
   return ΔL
 
 end
-
 
 
 """
@@ -496,9 +499,13 @@ function update_A!(pars, model)
   M = pars.M
 
   fcurr = pars.F[samp_inds,:]
+  # fprime = create_∇Λ(model.Λ, A, model.Basis, samp_inds, model.ΛTimeNames, model.D, model.νT, model.N, model.X)
   fprime = create_∇Λ(model.Λ, A, model.Basis, samp_inds, model.ΛTimeNames, model.X)
 
+
+  # dq = [ΔL(v[:, i], h[i], ϕ[i, :], ϕ_t[i, :], ΣVinv, ΣUinv, A, M, fcurr[i,:], fprime[i,:][1]) for i in 1:length(samp_inds)]
   dq = [ΔL(v[:, i], h[i], ϕ[i, :], ϕ_t[i, :], ΣVinv, ΣUinv, A, M, fcurr[i,:], fprime[i,:]) for i in 1:length(samp_inds)]
+
 
   scale_el = 1 / 100
   dq = mean(dq) + (1 / (model.T)) * (scale_el * sign.(A) + 2 * scale_el * A)
@@ -527,7 +534,7 @@ The parameters are the final value of the parameters in from the sampler.
 The posterior are the saved posterior values.
 
 Consider the function ``U_t = M(U, U^2, U^3, ...)``.
-DEtection_sampler() is used to determine ``M`` given a library of potential values, `Λ(U)`, to search over. 
+``DEtection_sampler()`` is used to determine ``M`` given a library of potential values, `Λ(U)`, to search over. 
 Within the function, derivatives are denoted as ``ΔU_t, ΔU_tt, ...``, so a potential function could be
 
 ```jldoctest 

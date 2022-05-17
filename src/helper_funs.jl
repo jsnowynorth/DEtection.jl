@@ -217,7 +217,6 @@ Create a matrix of the function Λ evaluated at each location
 - State: StateClass current state of values
 
 """
-
 function create_Λ(Λ::Function, A, Basis, ΛTimeNames, X=nothing)
 
   if X === nothing
@@ -237,7 +236,7 @@ function create_∇Λ(Λ::Function, A, Basis, samp_inds, ΛNames, X=nothing)
     N = size(A,1)
     Lname = length(ΛNames)
 
-    if Lname > 2
+    if Lname > 1
         if X === nothing
             Φ = [reshape(Basis.TimeDerivative[Basis.TimeNames[i]][j,:],1,:) for i in 1:Lname, j in samp_inds]
             dΛeval = [jacobian(A -> Λ(A, Φ[:,i]), reshape(A[n,:],1,:)) for i in 1:length(samp_inds), n in 1:N]
@@ -260,3 +259,46 @@ function create_∇Λ(Λ::Function, A, Basis, samp_inds, ΛNames, X=nothing)
 
 end
 
+
+
+# function create_Λ(Λ::Function, A, Basis, ΛTimeNames, X=nothing)
+
+#   if X === nothing
+#     Φ = [Basis.TimeDerivative[Basis.TimeNames[i]] for i in 1:Basis.orderTime]
+#     Λeval = permutedims(reduce(vcat, Λ(A, Φ)), (2,1))
+#   else
+#     Φ = [Basis.TimeDerivative[Basis.TimeNames[i]] for i in 1:Basis.orderTime]
+#     Λeval = permutedims(reduce(vcat, Λ(A, Φ, X)), (2,1))
+#   end
+
+#   return Λeval
+
+# end
+
+# function create_∇Λ(Λ::Function, A, Basis, samp_inds, ΛNames, D, nbasis, N, X=nothing)
+
+#     # N = size(A,1)
+#     Lname = length(ΛNames)
+
+#     if Lname > 2
+#         if X === nothing
+#             Φ = [reshape(Basis.TimeDerivative[Basis.TimeNames[i]][j,:],1,:) for i in 1:Lname, j in samp_inds]
+#             dΛeval = [jacobian(A -> Λ(A, Φ[:,i]), reshape(A[n,:],1,:)) for i in 1:length(samp_inds), n in 1:N]
+#         else
+#             Φ = [reshape(Basis.TimeDerivative[Basis.TimeNames[i]][j,:],1,:) for i in 1:Lname, j in samp_inds]
+#             dΛeval = [jacobian(A -> Λ(A, Φ[:,i], X[:, samp_inds[i]]), reshape(A[n,:],1,:)) for i in 1:length(samp_inds), n in 1:N]
+#         end
+#     else
+#         if X === nothing
+#           Φ = [Basis.TimeDerivative[Basis.TimeNames[i]][j,:]' for i in 1:Lname, j in samp_inds]
+#           dΛeval = [permutedims(reshape(Zygote.jacobian(A -> Λ(A, Φ[:,i]), A)[1], D, N, nbasis), (1,3,2)) for i in 1:length(samp_inds)]
+#         else
+#             Φ = [Basis.TimeDerivative[Basis.TimeNames[i]][j,:] for i in 1:Lname, j in samp_inds]
+#             dΛeval = [jacobian(A -> Λ(A, Φ[i], X[:, samp_inds[i]]), A[n,:]) for i in 1:length(samp_inds), n in 1:N]
+#         end
+#     end
+
+
+#   return dΛeval
+
+# end

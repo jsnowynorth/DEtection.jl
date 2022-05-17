@@ -1,34 +1,8 @@
 
 
 using DEtection
-
-using StatsBase, LinearAlgebra, Plots, StatsPlots, CSV
-using Kronecker
-using Missings
-using Distributions, Random
-using ProgressMeter
-using ReverseDiff: JacobianTape, JacobianConfig, jacobian, jacobian!, compile
-using ForwardDiff
-using Pipe: @pipe
-using Statistics
-using JLD2
-using RCall
-using TexTables, KernelDensity
-using DataFrames, DataFramesMeta, Chain
-using NetCDF
-using MultivariateStats
-using StatsModels, Combinatorics, IterTools
-using Dates
-using KernelDensity
-using Tables
-@rlibrary ggplot2
-
-using DEtection
 using Plots, Missings, Distributions, Random, LinearAlgebra, Statistics
 using NetCDF, Dates, CSV, DataFrames, DataFramesMeta, Chain
-
-
-
 
 
 ###################### load data ######################
@@ -42,15 +16,6 @@ T = ncread("../DEtection/data/data_SST_011901_112021.nc", "T")
 sst = ncread("../DEtection/data/data_SST_011901_112021.nc", "anom")
 
 sst = replace(sst, -999.0 => missing)
-
-# contourf(x, y, sst[:,:,1,1000]')
-
-# contourf(x, y, sst[:,:,1,300]', clim = (-2, 4))
-# contourf(x, y, sst[:,:,1,301]', clim = (-2, 4))
-# contourf(x, y, sst[:,:,1,302]', clim = (-2, 4))
-# contourf(x, y, sst[:,:,1,1374]', clim = (-2, 4))
-# contourf(x, y, sst[:,:,1,1375]', clim = (-2, 4))
-
 
 
 land_id = map(!, isequal.(sst[:, :, 1, 1], missing))
@@ -195,36 +160,11 @@ function Λ(A, Φ)
 
 end
 
-# function Lambda(x::Vector) # length 65
-#     a = x[1]
-#     b = x[2]
-#     c = x[3]
-#     d = x[4]
-#     e = x[5]
-#     f = x[6]
-#     g = x[7]
-#     h = x[8]
-#     i = x[9]
-#     j = x[10]
-#     return ([a, b, c, d, e, f, g, h, i, j,
-#         a * b, a * c, a * d, a * e, a * f, a * g, a * h, a * i, a * j,
-#         b * c, b * d, b * e, b * f, b * g, b * h, b * i, b * j,
-#         c * d, c * e, c * f, c * g, c * h, c * i, c * j,
-#         d * e, d * f, d * g, d * h, d * i, d * j,
-#         e * f, e * g, e * h, e * i, e * j,
-#         f * g, f * h, f * i, f * j,
-#         g * h, g * i, g * j,
-#         h * i, h * j,
-#         i * j,
-#         a^2, b^2, c^2, d^2, e^2, f^2, g^2, h^2, i^2, j^2])
-# end
-
-
 ######################### sample sgmcmc #########################
 
 
 
-nbasis = 175
+nbasis = 200
 TimeStep = Vector(range(1/12, size(Y,2)*(1/12), step = 1/12))
 batch_size = 50
 buffer = 5
@@ -234,7 +174,7 @@ order = 1
 learning_rate = 1e0
 
 
-model, pars, posterior = DEtection_sampler(Y, TimeStep, nbasis, buffer, batch_size, learning_rate, v0, v1, Λ, ΛNames, nits = 100)
+model, pars, posterior = DEtection_sampler(Y, TimeStep, nbasis, buffer, batch_size, learning_rate, v0, v1, Λ, ΛNames, nits = 20000)
 
 sysnames = ["aₜ", "bₜ", "cₜ", "dₜ", "eₜ", "fₜ", "gₜ", "hₜ", "iₜ", "jₜ"]
 print_equation(sysnames, model, pars, posterior, cutoff_prob=0.95, p=0.95)
@@ -249,42 +189,37 @@ post.ΣU
 post.π
 
 
-
-
-
-
-
-
-
-
-samps = DEtection_sampler(Y, 1e0, 1e0,
-    nits = 20000,
-    burnin = 19000,
-    nbasis = 175,
-    h = 1 / 12,
-    batch_size = 50,
-    buffer = 5,
-    v0 = 1e-6,
-    v1 = 1e4,
-    order = 1,
-    latent_space = 10,
-    Lambda)
-#
-
-round.(mean(samps["gamma"], dims = 3), digits = 3)
-round.(mean(samps['M'], dims = 3)[:, :, 1], digits = 3)
-
-mean(samps['R'], dims = 3)
-mean(samps['Q'], dims = 3)
-
-plot(samps['M'][1, 3, :])
-plot(samps['M'][2, 3, :])
-
-
 ######################### EOF prediction functions #########################
 
+function Λpred(X)
+  
+    a = X[1]
+    b = X[2]
+    c = X[3]
+    d = X[4]
+    e = X[5]
+    f = X[6]
+    g = X[7]
+    h = X[8]
+    i = X[9]
+    j = X[10]
+    
+    return [a, b, c, d, e, f, g, h, i, j,
+              a .* b, a .* c, a .* d, a .* e, a .* f, a .* g, a .* h, a .* i, a .* j,
+              b .* c, b .* d, b .* e, b .* f, b .* g, b .* h, b .* i, b .* j,
+              c .* d, c .* e, c .* f, c .* g, c .* h, c .* i, c .* j,
+              d .* e, d .* f, d .* g, d .* h, d .* i, d .* j,
+              e .* f, e .* g, e .* h, e .* i, e .* j,
+              f .* g, f .* h, f .* i, f .* j,
+              g .* h, g .* i, g .* j,
+              h .* i, h .* j,
+              i .* j,
+              a.^2, b.^2, c.^2, d.^2, e.^2, f.^2, g.^2, h.^2, i.^2, j.^2]
+  
+end
+
 function new_state(X, M)
-    val = M * Lambda(X)
+    val = M * Λpred(X)
     return Array(val)
 end
 
@@ -309,11 +244,11 @@ function predict_state(X, M, h, nsamps)
     return Y_sim
 end
 
-function pred_nino_hpd(Y_test, sst, n_pred, h, sample, start_t, endNt, T, location_inds, sea_inds, x, y)
+function pred_nino_hpd(Y_test, sst, n_pred, h, M, start_t, endNt, T, location_inds, sea_inds, x, y)
 
     # set up predictions for EOFs
-    pred_sst_pc = [predict_state(Y_test[:, start_t], sample['M'][:, :, i], h, n_pred) for i in 1:size(sample['M'], 3)]
-    inds = [any(isnan.(pred_sst_pc[i])) for i in 1:size(sample['M'], 3)]
+    pred_sst_pc = [predict_state(Y_test[:, start_t], M[:, :, i], h, n_pred) for i in 1:size(M, 3)]
+    inds = [any(isnan.(pred_sst_pc[i])) for i in 1:size(M, 3)]
     ests = pred_sst_pc .* .!inds
 
 
@@ -353,7 +288,7 @@ start_date = Dates.Date(1960, 1, 1)
 Tpred = start_date + Dates.Month(Int(floor(T[endNt])))
 
 forecast = 2 # note 1 is the last day of the training set
-nino_df = pred_nino_hpd(Y_test, sst, 12, 1 / 12, samps, forecast, endNt, T, location_inds, sea_inds, x, y)
+nino_df = pred_nino_hpd(Y_test, sst, 12, 1 / 12, posterior.M, forecast, endNt, T, location_inds, sea_inds, x, y)
 
 nino_df = @chain nino_df begin
     @subset(:Ind .<= 10)

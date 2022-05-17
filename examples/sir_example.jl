@@ -54,10 +54,10 @@ Z = copy(Y) + rand(MvNormal([0.0; 0.0; 0.0], R), nsamps)
 Z = [(Z[i, j] < 0 ? 0 : Z[i, j]) for i in 1:3, j in 1:nsamps]
 Z = Matrix{Float64}(Z)
 
-Y_prime = [sir(Y[:, i], pars) for i in 1:nsamps]
-Z_prime = [sir(Z[:, i], pars) for i in 1:nsamps]
-Y_prime = reduce(hcat, Y_prime)
-Z_prime = reduce(hcat, Z_prime)
+# Y_prime = [sir(Y[:, i], pars) for i in 1:nsamps]
+# Z_prime = [sir(Z[:, i], pars) for i in 1:nsamps]
+# Y_prime = reduce(hcat, Y_prime)
+# Z_prime = reduce(hcat, Z_prime)
 
 
 # plot(h:h:end_time, Y', label = ['S' 'I' 'R'], color = ["red" "purple" "green"], lw = 3, m = 2)
@@ -91,15 +91,17 @@ buffer = 10
 v0 = 1e-8
 v1 = 1e2
 order = 1
-learning_rate = 1e-3
+learning_rate = 1e0
 
 
-model, pars, posterior = DEtection_sampler(Y, TimeStep, nbasis, buffer, batch_size, learning_rate, v0, v1, Λ, ΛNames, nits = 100)
-model, pars, posterior = DEtection_sampler(Z, TimeStep, nbasis, buffer, batch_size, learning_rate, v0, v1, Λ, ΛNames, nits = 1000)
+# model, pars, posterior = DEtection_sampler(Y, TimeStep, nbasis, buffer, batch_size, learning_rate, v0, v1, Λ, ΛNames, nits = 10000)
+model, pars, posterior = DEtection_sampler(Z, TimeStep, nbasis, buffer, batch_size, learning_rate, v0, v1, Λ, ΛNames, nits = 10000)
 
+model
 
+######################### output #########################
 
-print_equation(["Sₜ", "Iₜ", "Rₜ"], model, pars, posterior, cutoff_prob=0.99, p=0.95)
+print_equation(["Sₜ", "Iₜ", "Rₜ"], model, pars, posterior, cutoff_prob=0.95, p=0.95)
 
 
 post = posterior_summary(model, pars, posterior)
@@ -120,62 +122,8 @@ plot(post_mean[2,:])
 plot!(Y[2,:])
 
 plot(post_mean[3,:])
-plot!(Y[3,:])
+plot!(Z[3,:])
 
+plot(posterior.M[3,2,:])
 
-plot(posterior.M[1,3,:])
-plot(posterior.M[1,2,:])
-plot(posterior.M[2,1,:])
-plot(posterior.M[2,2,:])
-plot(posterior.M[2,5,:])
-plot(posterior.M[3,3,:])
-plot(posterior.M[3,4,:])
-
-plot(posterior.ΣU[1,1,:])
-plot(posterior.ΣV[1,1,:])
-
-
-
-
-
-
-
-
-
-
-
-
-function Lambda(x::Vector)
-    S = x[1]
-    I = x[2]
-    R = x[3]
-    return ([S, I, S * I, S^2, I^2, S^2 * I, S * I^2, S^3, I^3])
-end
-
-######################### run sgmcmc #########################
-samps = DEtection_sampler(Z, 1e1, 1e1,
-    nits = 10000,
-    burnin = 5000,
-    nbasis = 200,
-    h = 0.01,
-    batch_size = 20,
-    buffer = 10,
-    v0 = 1e-8,
-    v1 = 1e2,
-    order = 1,
-    latent_space = 3,
-    Lambda)
-#
-
-par_names = ["S"; "I"; "S*I"; "S^2"; "I^2"; "S^2*I"; "S*I^2"; "S^3"; "I^3"]
-sys_names = ["dS/dt"; "dI/dt"; "dR/dt"]
-eqs = print_equation(M = samps['M'],
-    M_prob = samps["gamma"],
-    par_names = par_names,
-    sys_names = sys_names,
-    cutoff_prob = 0.999)
-eqs["mean"]
-eqs["lower"]
-eqs["upper"]
-
-
+plot(posterior.A[3,10,:])
